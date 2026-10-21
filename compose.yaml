@@ -1,0 +1,60 @@
+
+services:
+  db:
+    image: postgres:${POSTGRES_VERSION}
+    container_name: ${DB_CONTAINER_NAME}
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_it_equipment_loan_db_datas:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin-it-equipment-loan
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@localhost.com
+      PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_it_equipment_loan_datas:/var/lib/pgadmin
+
+  odoo:
+    user: root
+    build:
+      context: .
+      args:
+        ODOO_VERSION: ${ODOO_VERSION}
+    container_name: ${ODOO_CONTAINER_NAME}
+    image: odoo:${ODOO_VERSION}
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - ${ODOO_PORT}:8069
+    volumes:
+      - odoo_it_equipment_loan_web_datas:/var/lib/odoo
+      - ${CONFIG_PATH}:/etc/odoo/
+      - ${ADDONS_PATH}:/mnt/extra-addons
+      - ${ENTREPRISE_PATH}:/mnt/entreprise-addons
+      - ./requirements.txt:/mnt/requirements.txt:ro
+    command: odoo -c /etc/odoo/odoo.conf --dev=all
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+volumes:
+  odoo_it_equipment_loan_web_datas:
+  postgres_it_equipment_loan_db_datas:
+  pgadmin_it_equipment_loan_datas:
