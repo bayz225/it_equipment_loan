@@ -22,7 +22,7 @@ Pour activer les outils développeur dans l'interface web, ouvrez Odoo avec
 
 Connectez-vous à pgAdmin avec :
 
-- Adresse : `admin@localhost`
+- Adresse : `admin@localhost.com`
 - Mot de passe : la valeur de `POSTGRES_PASSWORD` dans `.env`
 
 Ajoutez ensuite un serveur PostgreSQL dans pgAdmin :
