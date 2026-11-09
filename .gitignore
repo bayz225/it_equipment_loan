@@ -6,6 +6,8 @@ __pycache__/
 .env
 todo.md
 commande.md
+it_equipment_loan.code-workspace
+
 # Odoo
 *.log
 .odoo/
