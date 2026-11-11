@@ -13,9 +13,18 @@ class ItEquipmentCategory(models.Model):
     )
 
     name = fields.Char(string='Nom', required=True)
-    max_loan_days = fields.Integer(string='Durée du prêt (jour)', default=14)
+    max_loan_days = fields.Integer(string='Durée du prêt (jour)', default=14,)
     requires_approval = fields.Boolean(string='Approbation requise', default=False)
-    # equipment_count = fields.Integer(string='Nombre d\'équipement', compute='_compute_equipment_count')
+    equipment_ids = fields.One2many(
+        comodel_name='it.equipment', 
+        inverse_name='category_id', 
+        string='Équipements'
+    )
+    equipment_count = fields.Integer(
+        string='Nombre d\'équipement', 
+        compute='_compute_equipment_count',
+        store=True
+    )
 
     @api.constrains("name")
     def _check_unique_name(self):
@@ -44,3 +53,16 @@ class ItEquipmentCategory(models.Model):
             if not unicodedata.combining(char)
         )
         return field.casefold()
+
+    @api.constrains("max_loan_days")
+    def _check_max_loan_days(self):
+        for category in self:
+            if category.max_loan_days <= 0:
+                raise ValidationError(
+                    "La durée maximale du prêt doit être supérieure à 0."
+                )
+    
+    @api.depends("equipment_ids")
+    def _compute_equipment_count(self):
+        for category in self:
+            category.equipment_count = len(category.equipment_ids)
