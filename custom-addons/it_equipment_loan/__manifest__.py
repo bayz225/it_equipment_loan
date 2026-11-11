@@ -18,9 +18,14 @@
 
     # always loaded
     'data': [
+        # 1. Sécurités
         # 'security/ir.model.access.csv',
-        'views/views.xml',
-        'views/templates.xml',
+        
+        # 2. Données
+        "data/ir_sequence.xml",
+        
+        # 3. Vues de l'interface
+        'views/menu.xml',
     ],
     # only loaded in demonstration mode
     'demo': [
