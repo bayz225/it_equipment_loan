@@ -14,7 +14,13 @@ class ItLoan(models.Model):
         ),
     ]
     
-    # name = fields.Char(string="Référence", required=True, copy=False, readonly=True, default=lambda self: 'Nouveau')
+    name = fields.Char(
+        string="Référence", 
+        required=True, 
+        copy=False, 
+        readonly=True, 
+        default=lambda self: 'Nouveau'
+    )
     employee_id = fields.Many2one(
         string='Demandeur',
         comodel_name='hr.employee',
@@ -91,4 +97,12 @@ class ItLoan(models.Model):
             if loan.is_late:
                 delta = loan.date_return - loan.date_due
                 loan.late_days = delta.days
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('reference', "Nouveau") == "Nouveau":
+                vals['reference'] = self.env['ir.sequence'].next_by_code('it.loan')
+            
+        return super().create(vals_list)
     
