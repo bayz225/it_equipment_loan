@@ -7,27 +7,26 @@
             web_icon="it_equipment_loan,static/description/icon.png"
         />
 
-    <!-- <menuitem
-            id="menu_helpdesk_ticket_master"
-            name="Tickets"
-            parent="menu_helpdesk_root"
+    <menuitem
+            id="menu_it_equipment_master"
+            name="Catalogue"
+            parent="menu_it_equipment_loan_root"
             sequence="10"
-            groups="bayz_helpdesk.group_helpdesk_user"
         />
 
-    <menuitem
+    <!-- <menuitem
             id="menu_helpdesk_reporting_master"
             name="Reporting"
             parent="menu_helpdesk_root"
             sequence="30"
             groups="bayz_helpdesk.group_helpdesk_manager"
-        />
+        /> -->
 
-    <menuitem
+    <!-- <menuitem
             id="menu_helpdesk_parameter_master"
             name="Paramètres"
             parent="menu_helpdesk_root"
             sequence="50"
             groups="bayz_helpdesk.group_helpdesk_technician"
-        /> -->
+        />  -->
 </odoo>

@@ -19,14 +19,20 @@
     # always loaded
     'data': [
         # 1. Sécurités
-        # 'security/ir.model.access.csv',
+        'security/ir.model.access.csv',
         
         # 2. Données
         "data/ir_sequence.xml",
         
         # 3. Vues de l'interface
         'views/menu.xml',
+        'views/it_equipment_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'it_equipment_loan/static/src/scss/style.scss',
+        ],
+    },
     # only loaded in demonstration mode
     'demo': [
         'demo/demo.xml',

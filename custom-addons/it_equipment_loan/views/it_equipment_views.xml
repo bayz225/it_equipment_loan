@@ -1,0 +1,240 @@
+<odoo>
+    <data>
+        <!-- VUE LISTE -->
+
+        <record id="view_it_equipment_list" model="ir.ui.view">
+            <field name="name">it.equipment.list</field>
+            <field name="model">it.equipment</field>
+
+            <field name="arch" type="xml">
+                <list
+                    default_group_by="state"
+                    class="o_list_v_center"
+                    sample="1"
+                    limit="10"
+                >
+                    <field 
+                        name="image" 
+                        string=" "
+                        widget="image" 
+                        options="{'size': [40, 40]}"
+                        width="80px"
+                    />
+                    <field name="name"/>
+                    <field name="reference"  optional="hide"/>
+                    <field name="category_id"  optional="show"/>
+                    <field name="serial_number" optional="show"/>
+                    <field
+                        name="state"
+                        widget="badge"
+                        decoration-success="state == 'available'"
+                        decoration-info="state == 'loaned'"
+                        decoration-warning="state =='maintenance'"
+                        decoration-danger="state == 'retired'"
+                    />
+                    <field name="active" widget="boolean_toggle" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- VUE KANBAN -->
+
+        <record id="view_it_equipment_kanban" model="ir.ui.view">
+            <field name="name">it.equipment.kanban</field>
+            <field name="model">it.equipment</field>
+
+            <field name="arch" type="xml">
+                <kanban 
+                    default_group_by="state"
+                    class="o_kanban_small_column"
+                    sample="1"
+                >
+                    <!-- Champs utilisés dans la carte -->
+                    <field name="name"/>
+                    <field name="reference"/>
+                    <field name="category_id"/>
+                    <field name="serial_number"/>
+                    <field name="state"/>
+                    <field name="image"/>
+                    <field name="active"/>
+                    <field name="purchase_date"/>
+
+                    <templates>
+                        <t t-name="card">
+                            <div 
+                                class="oe_kanban_global_click
+                                d-flex align-items-stretch
+                                gap-3 p-3"
+                            >
+
+                                <!-- Image à gauche -->
+                                <div class="flex-shrink-0" style="width: 110px;">
+
+                                    <div class="rounded overflow-hidden bg-light h-100 d-flex align-items-center justify-content-center">
+
+                                        <field 
+                                            name="image"
+                                            widget="image"
+                                            class="w-100 h-100"
+                                            options="{
+                                                'img_class': 'object-fit-contain'
+                                            }"/>
+                                    </div>
+                                </div>
+
+                                <!-- Informations à droite -->
+                                <div class="flex-grow-1 min-w-0 d-flex flex-column">
+
+                                    <!-- Ruban archivage -->
+                                    <widget 
+                                        name="web_ribbon"
+                                        title="Archivé"
+                                        bg_color="bg-danger"
+                                        invisible="active"
+                                    />
+
+                                    <!-- Nom et référence -->
+                                    <div class="mb-2">
+                                        <strong class="d-block text-truncate fs-5">
+                                            <field name="name"/>
+                                        </strong>
+
+                                        <small class="text-muted">
+                                            <field name="reference"/>
+                                        </small>
+                                    </div>
+
+                                    <!-- Informations -->
+                                    <div class="d-flex flex-column gap-2">
+
+                                        <div 
+                                            t-if="record.category_id.raw_value"
+                                            class="d-flex align-items-center gap-2 text-muted"
+                                        >
+                                            <i class="fa fa-tags" aria-label="Catégorie" title="Catégorie"/>
+                                            <field name="category_id"/>
+                                        </div>
+
+                                        <div 
+                                            t-if="record.serial_number.raw_value"
+                                            class="d-flex align-items-center gap-2 text-muted"
+                                        >
+                                            <i class="fa fa-barcode" aria-label="Numéro de série" title="Numéro de série"/>
+                                            <field name="serial_number"/>
+                                        </div>
+                                    </div>
+
+                                    <!-- Pied de carte -->
+                                    <div class="mt-auto pt-3 d-flex align-items-center justify-content-between">
+
+                                        <small 
+                                            class="text-muted"
+                                            t-if="record.purchase_date.raw_value"
+                                        >
+                                            <i class="fa fa-calendar me-1" aria-label="Date d'achat" title="Date d'achat"/>
+                                            <field name="purchase_date" widget="date"/>
+                                        </small>
+
+                                        <field name="state"
+                                            widget="label_selection"
+                                            options="{
+                                                'classes': {
+                                                    'available': 'success',
+                                                    'loaned': 'warning',
+                                                    'maintenance': 'danger',
+                                                    'retired': 'default'
+                                                }
+                                            }"/>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+
+            </field>
+        </record>
+
+
+        <!-- VUE FORMULAIRE -->
+
+        <record id="view_it_equipment_form" model="ir.ui.view">
+            <field name="name">it.equipment.form</field>
+            <field name="model">it.equipment</field>
+
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <!-- Barre de progression des statuts -->
+                        <field 
+                            name="state" 
+                            widget="statusbar" 
+                            statusbar_visible="new,available,loaned,maintenance"
+                        />
+                    </header>
+                    <sheet>
+                        <!-- Ruban d'archivage visible uniquement si active=False -->
+                        <widget name="web_ribbon" title="Archivé" bg_color="bg-danger" invisible="active"/>
+                        <field name="active" invisible="1"/>
+                        
+                        <!-- Emplacement standard de l'image en haut à gauche -->
+                        <field name="image" widget="image" class="oe_avatar"/>
+                        
+                        <!-- Titre principal -->
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1>
+                                <field name="name" placeholder="Ex: Ordinateur Portable Dell XPS 15"/>
+                            </h1>
+                            <h3 class="text-muted">
+                                <field name="reference"/>
+                            </h3>
+                        </div>
+                        
+                        <!-- Organisation en colonnes -->
+                        <group>
+                            <group string="Identification" name="identification">
+                                <field name="category_id"/>
+                                <field name="serial_number"/>
+                            </group>
+                            <group string="Acquisition" name="acquisition">
+                                <field name="purchase_date"/>
+                            </group>
+                        </group>
+                        
+                        <!-- Séparation des données riches dans des onglets -->
+                        <notebook>
+                            <page string="Notes" name="notes">
+                                <field name="notes" placeholder="Spécifications techniques, remarques ou détails sur l'état de l'équipement..."/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- ACTION -->
+
+        <record id="action_it_equipment" model="ir.actions.act_window">
+            <field name="name">Équipements</field>
+            <field name="res_model">it.equipment</field>
+            <field name="view_mode">kanban,list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Créez votre premier équipement !
+                </p>
+            </field>
+        </record>
+
+        <!-- MENU -->
+
+        <menuitem
+            id="menu_it_equipment"
+            name="Équipements"
+            parent="menu_it_equipment_master"
+            action="action_it_equipment"
+            sequence="0"
+        />
+    </data>
+</odoo>

@@ -12,7 +12,7 @@ class ItEquipment(models.Model):
         "Le numéro de serie de l'équipement doit être unique."
     )
 
-    name = fields.Char(string="Name", required=True)
+    name = fields.Char(string="Nom", required=True)
     reference = fields.Char(
         string="Référence",
         required=True,
@@ -46,14 +46,14 @@ class ItEquipment(models.Model):
     active = fields.Boolean(string="Active", default=True)
     
     @api.constrains("serial_number")
-    def _check_unique_name(self):
+    def _check_unique_serial_number(self):
         for equipment in self:
-            normalized_name = self._normalize_name(equipment.name)
+            normalized_name = self._normalize_field(equipment.name)
 
             duplicate = self.search([
                 ("id", "!=", equipment.id),
             ]).filtered(
-                lambda c: self._normalize_name(c.name)
+                lambda c: self._normalize_field(c.name)
                 == normalized_name
             )
 
@@ -62,7 +62,7 @@ class ItEquipment(models.Model):
                     "Une catégorie portant ce nom existe déjà."
                 )
 
-    def _normalize_name(self, field):
+    def _normalize_field(self, field):
         # Ignore les différences de casse, d'accents et d'espacement.
         field = field.strip()
         field = re.sub(r"\s+", " ", field)
