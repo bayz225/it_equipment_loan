@@ -5,6 +5,7 @@ class ItLoan(models.Model):
     _name = 'it.loan'
     _description = 'Prêt / Demande'
     _inherit = ["mail.thread", "mail.activity.mixin"]
+    _order = "create_date desc, date_start desc"
     
     _sql_constraints = [
         (
@@ -22,8 +23,8 @@ class ItLoan(models.Model):
         default=lambda self: 'Nouveau'
     )
     employee_id = fields.Many2one(
-        string='Demandeur',
         comodel_name='hr.employee',
+        string='Demandeur',
         default=lambda self: self.env.user.employee_id,
         ondelete='restrict',
         required=True
@@ -33,7 +34,11 @@ class ItLoan(models.Model):
         related='employee_id.department_id',
         store=True,
     )
-    # line_ids = fields.One2many('it.loan.line', 'loan_id', string="Équipements demandés")
+    line_ids = fields.One2many(
+        comodel_name='it.loan.line', 
+        inverse_name='loan_id', 
+        string="Équipements demandés",
+    )
     
     date_request = fields.Date(string='Date de la demande', default=fields.Date.context_today)
     date_start = fields.Date(string='Date de début', required=True)
@@ -55,7 +60,7 @@ class ItLoan(models.Model):
         tracking=True,
     )
     approver_id = fields.Many2one(
-        'res.users', 
+        comodel_name='res.users', 
         string="Validé par", 
         readonly=True
     )
