@@ -25,7 +25,11 @@ class ItEquipment(models.Model):
         string='Catégorie',
         required=True,
     )
-    serial_number = fields.Char(string='Numéro de serie', required=True)
+    serial_number = fields.Char(
+        string='Numéro de serie',
+        copy=False,
+        required=True
+    )
     purchase_date = fields.Date(string='Date d\'achat')
     state = fields.Selection(
         selection=[
@@ -47,13 +51,13 @@ class ItEquipment(models.Model):
     @api.constrains("serial_number")
     def _check_unique_serial_number(self):
         for equipment in self:
-            normalized_name = self._normalize_field(equipment.name)
+            normalized_serial_number = self._normalize_field(equipment.serial_number)
 
             duplicate = self.search([
                 ("id", "!=", equipment.id),
             ]).filtered(
-                lambda c: self._normalize_field(c.name)
-                == normalized_name
+                lambda c: self._normalize_field(c.serial_number)
+                == normalized_serial_number
             )
 
             if duplicate:
@@ -87,5 +91,3 @@ class ItEquipment(models.Model):
                 vals['reference'] = self.env['ir.sequence'].next_by_code('it.equipment')
             
         return super().create(vals_list)    
-
-    

@@ -27,6 +27,7 @@
         # 3. Vues de l'interface
         'views/menu.xml',
         'views/it_equipment_views.xml',
+        'views/it_equipment_category_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

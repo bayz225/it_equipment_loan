@@ -2,7 +2,7 @@
 <odoo>
     <menuitem
             id="menu_it_equipment_loan_root"
-            name="It Equipment Loan"
+            name="Prêts de matériel"
             sequence="10"
             web_icon="it_equipment_loan,static/description/icon.png"
         />
