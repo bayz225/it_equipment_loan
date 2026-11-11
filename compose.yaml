@@ -44,7 +44,7 @@ services:
       - ${ADDONS_PATH}:/mnt/extra-addons
       - ${ENTREPRISE_PATH}:/mnt/entreprise-addons
       - ./requirements.txt:/mnt/requirements.txt:ro
-    command: odoo -c /etc/odoo/odoo.conf --dev=all
+    command: odoo -c /etc/odoo/odoo.conf --dev xml,qweb
 
   mailpit:
     image: axllent/mailpit:latest

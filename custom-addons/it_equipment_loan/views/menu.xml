@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem
+            id="menu_it_equipment_loan_root"
+            name="It Equipment Loan"
+            sequence="10"
+            web_icon="it_equipment_loan,static/description/icon.png"
+        />
+
+    <menuitem
+            id="menu_it_equipment_master"
+            name="Catalogue"
+            parent="menu_it_equipment_loan_root"
+            sequence="10"
+        />
+</odoo>
