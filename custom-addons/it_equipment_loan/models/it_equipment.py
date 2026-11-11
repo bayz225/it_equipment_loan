@@ -29,14 +29,13 @@ class ItEquipment(models.Model):
     purchase_date = fields.Date(string='Date d\'achat')
     state = fields.Selection(
         selection=[
-            ("new", "Nouveau"),
             ("available", "Disponible"),
             ("loaned", "Prêter"),
             ("maintenance", "En maintenance"),
             ("retired", "Rétirer")
         ],
         string="État",
-        default="new",
+        default="available",
         group_expand=True,
     )
     image = fields.Image(string="Image", max_width=1024, max_height=1024)
@@ -72,3 +71,21 @@ class ItEquipment(models.Model):
             if not unicodedata.combining(char)
         )
         return field.casefold()
+    
+    @api.constrains("purchase_date")
+    def _check_purchase_date(self):
+        for equipment in self:
+            if equipment.purchase_date and equipment.purchase_date > fields.Date.today():
+                raise ValidationError(
+                    "La date d'achat ne peut pas être supérieure à la date actuelle."
+                )
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('reference', "Nouveau") == "Nouveau":
+                vals['reference'] = self.env['ir.sequence'].next_by_code('it.equipment')
+            
+        return super().create(vals_list)    
+
+    

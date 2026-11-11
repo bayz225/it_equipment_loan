@@ -13,20 +13,4 @@
             parent="menu_it_equipment_loan_root"
             sequence="10"
         />
-
-    <!-- <menuitem
-            id="menu_helpdesk_reporting_master"
-            name="Reporting"
-            parent="menu_helpdesk_root"
-            sequence="30"
-            groups="bayz_helpdesk.group_helpdesk_manager"
-        /> -->
-
-    <!-- <menuitem
-            id="menu_helpdesk_parameter_master"
-            name="Paramètres"
-            parent="menu_helpdesk_root"
-            sequence="50"
-            groups="bayz_helpdesk.group_helpdesk_technician"
-        />  -->
 </odoo>

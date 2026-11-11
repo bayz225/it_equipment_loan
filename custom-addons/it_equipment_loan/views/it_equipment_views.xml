@@ -56,8 +56,6 @@
                     <field name="serial_number"/>
                     <field name="state"/>
                     <field name="image"/>
-                    <field name="active"/>
-                    <field name="purchase_date"/>
 
                     <templates>
                         <t t-name="card">
@@ -126,15 +124,6 @@
 
                                     <!-- Pied de carte -->
                                     <div class="mt-auto pt-3 d-flex align-items-center justify-content-between">
-
-                                        <small 
-                                            class="text-muted"
-                                            t-if="record.purchase_date.raw_value"
-                                        >
-                                            <i class="fa fa-calendar me-1" aria-label="Date d'achat" title="Date d'achat"/>
-                                            <field name="purchase_date" widget="date"/>
-                                        </small>
-
                                         <field name="state"
                                             widget="label_selection"
                                             options="{
@@ -170,7 +159,7 @@
                         <field 
                             name="state" 
                             widget="statusbar" 
-                            statusbar_visible="new,available,loaned,maintenance"
+                            statusbar_visible="available,loaned,maintenance,retired"
                         />
                     </header>
                     <sheet>
@@ -211,6 +200,50 @@
                         </notebook>
                     </sheet>
                 </form>
+            </field>
+        </record>
+
+        <!-- VUE RECHERCHE -->
+
+        <record id="view_it_equipment_search" model="ir.ui.view">
+            <field name="name">it.equipment.form</field>
+            <field name="model">it.equipment</field>
+
+            <field name="arch" type="xml">
+                <search string="Recherche d'Équipements">
+                    <!-- Champs utilisés dans les Recherche -->
+                    <field name="name"/>
+                    <field 
+                        name="serial_number" 
+                        string="Numéro de série ou Référence"
+                        filter_domain="['|', ('serial_number', 'ilike', self), ('reference', 'ilike', self)]"
+                    />
+                    <field name="category_id"/>
+
+                    <separator/>
+
+                    <filter
+                        name="available"
+                        string="Disponible"
+                        domain="[('state', '=', 'available')]"
+                    />
+
+                    <filter
+                        name="loaned"
+                        string="En prêt"
+                        domain="[('state', '=', 'loaned')]"
+                    />
+
+                    <separator/>
+
+                    <group>
+                        <filter
+                            name="group_by_category"
+                            string="Catégorie"
+                            context="{'group_by': 'category_id'}"
+                        />
+                    </group>
+                </search>
             </field>
         </record>
 

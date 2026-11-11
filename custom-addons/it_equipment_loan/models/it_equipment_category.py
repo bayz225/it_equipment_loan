@@ -13,19 +13,19 @@ class ItEquipmentCategory(models.Model):
     )
 
     name = fields.Char(string='Nom', required=True)
-    max_loan_days = fields.Integer(string='Durée maximale de prêt', default=14)
+    max_loan_days = fields.Integer(string='Durée du prêt (jour)', default=14)
     requires_approval = fields.Boolean(string='Approbation requise', default=False)
-    equipment_count = fields.Integer(string='Nombre d\'équipement', compute='_compute_equipment_count')
+    # equipment_count = fields.Integer(string='Nombre d\'équipement', compute='_compute_equipment_count')
 
     @api.constrains("name")
     def _check_unique_name(self):
         for category in self:
-            normalized_name = self._normalize_name(category.name)
+            normalized_name = self._normalize_field(category.name)
 
             duplicate = self.search([
                 ("id", "!=", category.id),
             ]).filtered(
-                lambda c: self._normalize_name(c.name)
+                lambda c: self._normalize_field(c.name)
                 == normalized_name
             )
 
@@ -34,7 +34,7 @@ class ItEquipmentCategory(models.Model):
                     "Une catégorie portant ce nom existe déjà."
                 )
 
-    def _normalize_name(self, field):
+    def _normalize_field(self, field):
         # Ignore les différences de casse, d'accents et d'espacement.
         field = field.strip()
         field = re.sub(r"\s+", " ", field)
