@@ -88,6 +88,6 @@ class ItEquipment(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('reference', "Nouveau") == "Nouveau":
-                vals['reference'] = self.env['ir.sequence'].next_by_code('it.equipment')
+                vals['reference'] = self.env['ir.sequence'].next_by_code('it.equipment') or "Nouveau"
             
         return super().create(vals_list)    

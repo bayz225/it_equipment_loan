@@ -104,19 +104,23 @@ class ItLoan(models.Model):
         for loan in self:
             if loan.date_start and loan.date_request and loan.date_start < loan.date_request:
                 raise ValidationError("La date de début du prêt ne peut pas être antérieure à la date de la demande.")
-
-    @api.depends('date_due', 'date_return', 'is_late', 'late_days')
+    
+    @api.depends('date_due', 'date_return', 'state')
     def _compute_is_late(self):
+        today = fields.Date.context_today(self)
         for loan in self:
-            loan.is_late = bool(
-                loan.date_due
-                and loan.date_return
-                and loan.date_return > loan.date_due
-            )
-            
-            if loan.is_late:
-                delta = loan.date_return - loan.date_due
-                loan.late_days = delta.days
+            # Cas 1 : Le matériel a été rendu
+            if loan.date_return:
+                loan.is_late = loan.date_return > loan.date_due
+                loan.late_days = (loan.date_return - loan.date_due).days if loan.is_late else 0
+            # Cas 2 : Le matériel est encore dehors et la date est dépassée
+            elif loan.state in ['in_progress', 'approved'] and loan.date_due and loan.date_due < today:
+                loan.is_late = True
+                loan.late_days = (today - loan.date_due).days
+            # Cas 3 : Pas de retard
+            else:
+                loan.is_late = False
+                loan.late_days = 0
     
     def _check_state_transition(self, new_state):
         for loan in self:
@@ -142,17 +146,39 @@ class ItLoan(models.Model):
     
     def action_submit(self):
         self._change_state("submitted")
-    
+
     def action_approve(self):
+        # Assigne automatiquement le valideur
+        self.write({'approver_id': self.env.user.id})
         self._change_state("approved")
 
     def action_refuse(self):
         self._change_state("refused")
     
     def action_start(self):
+        # 1. Vérifier qu'il y a bien des équipements avant de démarrer
+        for loan in self:
+            if not loan.line_ids:
+                raise ValidationError("Vous ne pouvez pas démarrer un prêt sans équipement.")
+            
+            # 2. Changer l'état des équipements liés à "loaned" (Prêté)
+            for line in loan.line_ids:
+                if line.equipment_id.state != 'available':
+                    raise ValidationError(f"L'équipement {line.equipment_id.name} n'est plus disponible.")
+                
+                line.equipment_id.write({'state': 'loaned'})
+
+        # 3. Passer la demande de prêt au statut "En cours"
         self._change_state("in_progress")
     
     def action_return(self):
+        # Assigne automatiquement la date de retour effective
+        self.write({'date_return': fields.Date.context_today(self)})
+        
+        # Repasser les équipements à "Disponible"
+        for loan in self:
+            for line in loan.line_ids:
+                line.equipment_id.write({'state': 'available'})
         self._change_state("returned")
     
     def action_cancel(self):
@@ -161,9 +187,9 @@ class ItLoan(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('reference', "Nouveau") == "Nouveau":
-                vals['reference'] = self.env['ir.sequence'].next_by_code('it.loan')
-            
+            if vals.get('name', "Nouveau") == "Nouveau":
+                vals['name'] = self.env['ir.sequence'].next_by_code('it.loan') or "Nouveau"
+                
         return super().create(vals_list)
     
     def write(self, vals):
