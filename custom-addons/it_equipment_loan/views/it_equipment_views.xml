@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
         <!-- VUE LISTE -->
@@ -250,7 +251,7 @@
         <!-- ACTION -->
 
         <record id="action_it_equipment" model="ir.actions.act_window">
-            <field name="name">Équipements</field>
+            <field name="name">Gestion des équipements</field>
             <field name="res_model">it.equipment</field>
             <field name="view_mode">kanban,list,form</field>
             <field name="help" type="html">

@@ -28,6 +28,7 @@
         'views/menu.xml',
         'views/it_equipment_views.xml',
         'views/it_equipment_category_views.xml',
+        'views/it_loan_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

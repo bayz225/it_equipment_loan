@@ -17,13 +17,10 @@ class ItLoan(models.Model):
         "cancelled": [],
     }
     
-    _sql_constraints = [
-        (
-            'check_date_due',
-            'CHECK(date_due >= date_start)',
-            'La date de retour prévue doit être postérieure ou égale à la date de début du prêt.'
-        ),
-    ]
+    _check_date_due_constraint = models.Constraint(
+        "CHECK(date_due >= date_start)",
+        "La date de retour prévue doit être postérieure ou égale à la date de début du prêt."
+    )
     
     name = fields.Char(
         string="Référence", 
@@ -81,7 +78,7 @@ class ItLoan(models.Model):
     )
     reason = fields.Text(string="Motif de la demande")
     refusal_reason = fields.Text(string="Motif de refus")
-    is_late = fields.Boolean(string="En retard", compute='_compute_is_late', store=True)
+    is_late = fields.Boolean(string="En retard", compute='_compute_is_late')
     late_days = fields.Integer(string="Jours de retard", compute='_compute_is_late')
 
     @api.constrains('date_start', 'date_return')
@@ -167,16 +164,27 @@ class ItLoan(models.Model):
         # Assigne automatiquement le valideur
         self.write({'approver_id': self.env.user.id})
         self._change_state("approved")
+        
+        # Clôture automatiquement l'activité 'À faire' dans le chatter
+        for loan in self:
+            loan.activity_feedback(['mail.mail_activity_data_todo'])
 
     def action_refuse(self):
         self._change_state("refused")
+        
+        # Clôture automatiquement l'activité même en cas de refus
+        for loan in self:
+            loan.activity_feedback(['mail.mail_activity_data_todo'])
     
     def action_start(self):
+        today = fields.Date.context_today(self)
         # 1. Vérifier qu'il y a bien des équipements avant de démarrer
         for loan in self:
             if not loan.line_ids:
                 raise ValidationError("Vous ne pouvez pas démarrer un prêt sans équipement.")
             
+            if loan.date_start > today:
+                raise ValidationError("Vous ne pouvez pas démarrer avant la date de début de prêt.")
             # 2. Changer l'état des équipements liés à "loaned" (Prêté)
             for line in loan.line_ids:
                 if line.equipment_id.state != 'available':

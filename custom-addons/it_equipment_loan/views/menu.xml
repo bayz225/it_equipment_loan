@@ -11,6 +11,6 @@
             id="menu_it_equipment_master"
             name="Catalogue"
             parent="menu_it_equipment_loan_root"
-            sequence="10"
+            sequence="30"
         />
 </odoo>

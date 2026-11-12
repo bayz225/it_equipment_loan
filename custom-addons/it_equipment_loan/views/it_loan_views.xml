@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- VUE LISTE -->
+        <record id="view_it_loan_list" model="ir.ui.view">
+            <field name="name">it.loan.list</field>
+            <field name="model">it.loan</field>
+
+            <field name="arch" type="xml">
+                <list
+                    decoration-danger="is_late" 
+                    decoration-muted="state in ('cancelled', 'refused')" 
+                    sample="1"
+                >
+                    <field name="name" decoration-bf="1"/>
+
+                    <field name="employee_id" widget="many2one_avatar_employee"/>
+                    <field name="department_id" optional="show"/>
+                    <field name="date_start" optional="show"/>
+                    
+                    <!-- widget="remaining_days" affiche le nombre de jours restants (ex: "Dans 3 jours") -->
+                    <field name="date_due" widget="remaining_days"/>
+                    <field name="date_return" optional="hide"/>
+                    
+                    <!-- <field name="is_late" invisible="1"/> -->
+
+                    <field name="state" widget="badge" 
+                        decoration-info="state == 'draft'" 
+                        decoration-primary="state == 'submitted'" 
+                        decoration-success="state in ('approved', 'returned')" 
+                        decoration-warning="state == 'in_progress'" 
+                        decoration-danger="state == 'refused'"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- VUE CALANDRIER -->
+        <record id="view_it_loan_calendar" model="ir.ui.view">
+            <field name="name">it.loan.calendar</field>
+            <field name="model">it.loan</field>
+            <field name="arch" type="xml">
+                <calendar 
+                    string="Calendrier des prêts" 
+                    date_start="date_start" 
+                    date_stop="date_due" 
+                    color="state" 
+                    event_open_popup="true" 
+                    quick_create="false" 
+                    mode="month"
+                >
+                    <field name="employee_id" avatar_field="avatar_128"/>
+                    <field name="name"/>
+                    <field name="state" filters="1" invisible="1"/>
+                </calendar>
+            </field>
+        </record>
+
+        <!-- VUE FORMULAIRE -->
+
+        <record id="view_it_loan_form" model="ir.ui.view">
+            <field name="name">it.loan.form</field>
+            <field name="model">it.loan</field>
+
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <!-- Boutons du Workflow -->
+                        <button name="action_submit" string="Soumettre" type="object" class="oe_highlight" 
+                                invisible="state != 'draft'"/>
+                                
+                        <button name="action_approve" string="Approuver" type="object" class="oe_highlight" 
+                                invisible="state != 'submitted'"/>
+                                
+                        <button name="action_refuse" string="Refuser" type="object" class="btn-danger" 
+                                invisible="state != 'submitted'"/>
+                                
+                        <button name="action_start" string="Remettre le matériel" type="object" class="oe_highlight" 
+                                invisible="state != 'approved'"/>
+                                
+                        <button name="action_return" string="Enregistrer le retour" type="object" class="oe_highlight" 
+                                invisible="state != 'in_progress'"/>
+                                
+                        <button name="action_cancel" string="Annuler" type="object" 
+                                invisible="state not in ('draft', 'submitted', 'approved')"/>
+
+                        <!-- Barre de statut -->
+                        <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,in_progress,returned,refused,cancelled"/>
+                    </header>
+                    
+                    <sheet>
+                        <field name="is_late" invisible="1"/>
+                        
+                        <!-- Ruban d'alerte visible uniquement si la demande est en retard -->
+                        <widget name="web_ribbon" title="En Retard" bg_color="bg-danger" invisible="not is_late"/>
+
+                        <div class="oe_title">
+                            <label for="name" string="Référence de la demande"/>
+                            <h1>
+                                <field name="name"/>
+                            </h1>
+                        </div>
+
+                        <group>
+                            <group string="Informations du demandeur">
+                                <field name="employee_id" readonly="1"/>
+                                <field name="department_id"/>
+                                <field name="reason" readonly="state != 'draft'"/>
+                            </group>
+                            <group string="Détails du prêt">
+                                <field name="date_request" readonly="1"/>
+                                <field name="date_start" readonly="state != 'draft'"/>
+                                <field name="date_due" readonly="state != 'draft'"/>
+                                <field name="date_return" invisible="not date_return"/>
+                                <field name="approver_id" invisible="not approver_id"/>
+                                <field name="late_days" invisible="not is_late"/>
+                            </group>
+                        </group>
+
+                        <notebook>
+                            <page string="Équipements demandés" name="equipments">
+                                <!-- Lignes éditables en bas -->
+                                <field name="line_ids" readonly="state not in ('draft', 'submitted', 'approved')">
+                                    <list editable="bottom">
+                                        <field name="equipment_id" options="{'no_create': True, 'no_open': True}"/>
+                                        <field name="condition_out"/>
+                                        <field name="condition_return" readonly="parent.state != 'in_progress'"/>
+                                        <field name="return_notes" readonly="parent.state != 'in_progress'"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Motif de refus" name="refusal" invisible="state != 'refused'">
+                                <field name="refusal_reason" readonly="1"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    
+                    <chatter>
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </chatter>
+                </form>
+            </field>
+        </record>
+
+        <!-- ACTION -->
+
+        <record id="action_it_loan" model="ir.actions.act_window">
+            <field name="name">Gestion des prêt</field>
+            <field name="res_model">it.loan</field>
+            <field name="view_mode">list,calendar,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Créer votre première demande de prêt de matériel.
+                </p>
+            </field>
+        </record>
+
+        <!-- MENU -->
+
+        <menuitem
+            id="menu_it_loan_master"
+            name="Mes demandes"
+            parent="menu_it_equipment_loan_root"
+            action="action_it_loan"
+            sequence="0"
+        />
+    </data>
+</odoo>
