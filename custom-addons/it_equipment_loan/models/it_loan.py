@@ -100,10 +100,11 @@ class ItLoan(models.Model):
                 
     @api.constrains('date_request', 'date_start')
     def _check_request_date(self):
-        """Avertissement/Blocage si le prêt commence avant la demande."""
         for loan in self:
             if loan.date_start and loan.date_request and loan.date_start < loan.date_request:
-                raise ValidationError("La date de début du prêt ne peut pas être antérieure à la date de la demande.")
+                raise ValidationError(
+                    "La date de début du prêt ne peut pas être antérieure à la date de la demande."
+                )
     
     @api.depends('date_due', 'date_return', 'state')
     def _compute_is_late(self):
@@ -145,7 +146,22 @@ class ItLoan(models.Model):
             ).write(values)
     
     def action_submit(self):
+        # 1. On passe la demande au statut "Soumis"
         self._change_state("submitted")
+        
+        # 2. Création de l'activité pour chaque demande sélectionnée
+        for loan in self:
+            # On récupère l'utilisateur Odoo lié au manager de l'employé
+            manager_user = loan.employee_id.parent_id.user_id
+            
+            if manager_user:
+                # Planification de l'activité
+                loan.activity_schedule(
+                    act_type_xmlid='mail.mail_activity_data_todo', # Type d'activité : "À faire"
+                    summary=f"Validation requise : Demande {loan.name}",
+                    note=f"<p>L'employé <b>{loan.employee_id.name}</b> a soumis une demande de prêt d'équipement. Merci de l'examiner.</p>",
+                    user_id=manager_user.id
+                )
 
     def action_approve(self):
         # Assigne automatiquement le valideur
@@ -164,7 +180,9 @@ class ItLoan(models.Model):
             # 2. Changer l'état des équipements liés à "loaned" (Prêté)
             for line in loan.line_ids:
                 if line.equipment_id.state != 'available':
-                    raise ValidationError(f"L'équipement {line.equipment_id.name} n'est plus disponible.")
+                    raise ValidationError(
+                        f"L'équipement {line.equipment_id.name} n'est plus disponible."
+                    )
                 
                 line.equipment_id.write({'state': 'loaned'})
 
