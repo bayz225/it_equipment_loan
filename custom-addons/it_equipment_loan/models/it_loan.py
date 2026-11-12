@@ -1,0 +1,231 @@
+from odoo import models, fields, api
+from odoo.exceptions import UserError, ValidationError
+
+class ItLoan(models.Model):
+    _name = 'it.loan'
+    _description = 'Prêt / Demande'
+    _inherit = ["mail.thread", "mail.activity.mixin"]
+    _order = "create_date desc, date_start desc"
+    
+    ALLOWED_TRANSITIONS = {
+        "draft": ["submitted"],
+        "submitted": ["approved", "refused", "cancel"],
+        "approved": ["in_progress", "cancel"],
+        "in_progress": ["returned"],
+        "refused": [],
+        "returned": [],
+        "cancelled": [],
+    }
+    
+    _check_date_due_constraint = models.Constraint(
+        "CHECK(date_due >= date_start)",
+        "La date de retour prévue doit être postérieure ou égale à la date de début du prêt."
+    )
+    
+    name = fields.Char(
+        string="Référence", 
+        required=True, 
+        copy=False, 
+        readonly=True, 
+        default=lambda self: 'Nouveau'
+    )
+    employee_id = fields.Many2one(
+        comodel_name='hr.employee',
+        string='Demandeur',
+        default=lambda self: self.env.user.employee_id,
+        ondelete='restrict',
+        required=True
+    )
+    department_id = fields.Many2one(
+        string='Département',
+        related='employee_id.department_id',
+        store=True,
+    )
+    line_ids = fields.One2many(
+        comodel_name='it.loan.line', 
+        inverse_name='loan_id', 
+        string="Équipements demandés",
+    )
+    
+    date_request = fields.Date(string='Date de la demande', default=fields.Date.context_today)
+    date_start = fields.Date(string='Date de début', required=True)
+    date_due = fields.Date(
+        string='Date de retour prévue', 
+        required=True,
+        tracking=True
+    )
+    date_return = fields.Date(string='Retourné le')
+    
+    state = fields.Selection(
+        selection=[
+            ('draft', 'Brouillon'),
+            ('submitted', 'Soumis'),
+            ('approved', 'Approuvé'),
+            ('in_progress', 'En cours'),
+            ('returned', 'Retourné'),
+            ('refused', 'Refusé'),
+            ('cancelled', 'Annulé'),
+        ],
+        string="Statut",
+        default="draft",
+        tracking=True,
+    )
+    approver_id = fields.Many2one(
+        comodel_name='res.users', 
+        string="Validé par", 
+        readonly=True,
+        tracking=True
+    )
+    reason = fields.Text(string="Motif de la demande")
+    refusal_reason = fields.Text(string="Motif de refus")
+    is_late = fields.Boolean(string="En retard", compute='_compute_is_late')
+    late_days = fields.Integer(string="Jours de retard", compute='_compute_is_late')
+
+    @api.constrains('date_start', 'date_return')
+    def _check_return_date(self):
+        """Vérifie que la date de retour effective est cohérente."""
+        for loan in self:
+            if loan.date_return and loan.date_start and loan.date_return < loan.date_start:
+                raise ValidationError("La date de retour effective ne peut pas être antérieure à la date de début du prêt.")
+
+    @api.constrains('state', 'refusal_reason')
+    def _check_refusal_reason(self):
+        """Rend le motif de refus obligatoire si la demande est refusée."""
+        for loan in self:
+            if loan.state == 'refused' and not loan.refusal_reason:
+                raise ValidationError("Vous devez obligatoirement saisir un motif de refus avant de refuser cette demande.")
+                
+    @api.constrains('date_request', 'date_start')
+    def _check_request_date(self):
+        for loan in self:
+            if loan.date_start and loan.date_request and loan.date_start < loan.date_request:
+                raise ValidationError(
+                    "La date de début du prêt ne peut pas être antérieure à la date de la demande."
+                )
+    
+    @api.depends('date_due', 'date_return', 'state')
+    def _compute_is_late(self):
+        today = fields.Date.context_today(self)
+        for loan in self:
+            # Cas 1 : Le matériel a été rendu
+            if loan.date_return:
+                loan.is_late = loan.date_return > loan.date_due
+                loan.late_days = (loan.date_return - loan.date_due).days if loan.is_late else 0
+            # Cas 2 : Le matériel est encore dehors et la date est dépassée
+            elif loan.state in ['in_progress', 'approved'] and loan.date_due and loan.date_due < today:
+                loan.is_late = True
+                loan.late_days = (today - loan.date_due).days
+            # Cas 3 : Pas de retard
+            else:
+                loan.is_late = False
+                loan.late_days = 0
+    
+    def _check_state_transition(self, new_state):
+        for loan in self:
+            current_state = loan.state
+
+            if new_state not in self.ALLOWED_TRANSITIONS[current_state]:
+                raise UserError(
+                    "Cette transition n'est pas autorisée."
+                )
+    
+    # Methode permetante de modifier le state du prêt avec le nouveau state "new_state"
+    def _change_state(self, new_state):
+        self._check_state_transition(new_state)
+        
+        for loan in self:
+            values = {
+                "state": new_state
+            }
+            
+            loan.with_context(
+                allow_state_change=True,
+            ).write(values)
+    
+    def action_submit(self):
+        # 1. On passe la demande au statut "Soumis"
+        self._change_state("submitted")
+        
+        # 2. Création de l'activité pour chaque demande sélectionnée
+        for loan in self:
+            # On récupère l'utilisateur Odoo lié au manager de l'employé
+            manager_user = loan.employee_id.parent_id.user_id
+            
+            if manager_user:
+                # Planification de l'activité
+                loan.activity_schedule(
+                    act_type_xmlid='mail.mail_activity_data_todo', # Type d'activité : "À faire"
+                    summary=f"Validation requise : Demande {loan.name}",
+                    note=f"<p>L'employé <b>{loan.employee_id.name}</b> a soumis une demande de prêt d'équipement. Merci de l'examiner.</p>",
+                    user_id=manager_user.id
+                )
+
+    def action_approve(self):
+        # Assigne automatiquement le valideur
+        self.write({'approver_id': self.env.user.id})
+        self._change_state("approved")
+        
+        # Clôture automatiquement l'activité 'À faire' dans le chatter
+        for loan in self:
+            loan.activity_feedback(['mail.mail_activity_data_todo'])
+
+    def action_refuse(self):
+        self._change_state("refused")
+        
+        # Clôture automatiquement l'activité même en cas de refus
+        for loan in self:
+            loan.activity_feedback(['mail.mail_activity_data_todo'])
+    
+    def action_start(self):
+        today = fields.Date.context_today(self)
+        # 1. Vérifier qu'il y a bien des équipements avant de démarrer
+        for loan in self:
+            if not loan.line_ids:
+                raise ValidationError("Vous ne pouvez pas démarrer un prêt sans équipement.")
+            
+            if loan.date_start > today:
+                raise ValidationError("Vous ne pouvez pas démarrer avant la date de début de prêt.")
+            # 2. Changer l'état des équipements liés à "loaned" (Prêté)
+            for line in loan.line_ids:
+                if line.equipment_id.state != 'available':
+                    raise ValidationError(
+                        f"L'équipement {line.equipment_id.name} n'est plus disponible."
+                    )
+                
+                line.equipment_id.write({'state': 'loaned'})
+
+        # 3. Passer la demande de prêt au statut "En cours"
+        self._change_state("in_progress")
+    
+    def action_return(self):
+        # Assigne automatiquement la date de retour effective
+        self.write({'date_return': fields.Date.context_today(self)})
+        
+        # Repasser les équipements à "Disponible"
+        for loan in self:
+            for line in loan.line_ids:
+                line.equipment_id.write({'state': 'available'})
+        self._change_state("returned")
+    
+    def action_cancel(self):
+        self._change_state("cancelled")
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('name', "Nouveau") == "Nouveau":
+                vals['name'] = self.env['ir.sequence'].next_by_code('it.loan') or "Nouveau"
+                
+        return super().create(vals_list)
+    
+    def write(self, vals):
+        # L'état ne peut être modifié que par le workflow.
+        if "state" in vals:
+            if not self.env.context.get("allow_state_change"):
+                raise UserError(
+                    "Le status d'un prêt ne peut être modifié que par une action du workflow."
+                )
+                
+        # Écriture réelle
+        return super().write(vals)
+    
